@@ -4,19 +4,6 @@
   margin: 0;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  *,
-  *::before,
-  *::after {
-    cursor: none !important;
-  }
-
-  html,
-  body {
-    cursor: none !important;
-  }
-}
-
 @font-face {
   font-family: "Barlow";
   src: url("/fonts/barlow/Barlow-Regular.ttf") format("truetype");
