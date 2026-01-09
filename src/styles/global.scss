@@ -61,13 +61,16 @@
 }
 
 :root {
-  --blue-sapphire: #0f5c8c;
-  --oxford-blue: #072a40;
-  --davys-grey: #565958;
-  --quick-silver: #9fa6a2;
-  --smoky-black: #0d0d0d;
-  --white: #ffffff;
-  --black: #000000;
+  --color-accent: #4D5A73;
+  --color-accent-soft: #8E9EBF;
+  --color-forest: #41593B;
+  --color-forest-dark: #1A2614;
+  --color-forest-bright: #5F7334;
+  --color-neutral-100: #D9D9D9;
+  --color-neutral-300: #8C8C8C;
+  --color-neutral-500: #404040;
+  --color-neutral-700: #262626;
+  --color-neutral-900: #0D0D0D;
 
   --font-barlow: "Barlow", sans-serif;
   --font-hemi-head: "Hemi Head", sans-serif;
@@ -103,7 +106,7 @@ html {
 body {
   position: relative;
   overflow-x: clip;
-  background: var(--smoky-black);
+  background: var(--color-neutral-900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 

@@ -37,7 +37,7 @@
   &-line {
     width: 100%;
     height: 0.1rem;
-    background: var(--quick-silver);
+    background: var(--color-neutral-300);
     position: relative;
 
     &:first-of-type {
@@ -93,7 +93,7 @@
       display: flex;
       align-items: center;
       gap: 2rem;
-      color: var(--white);
+      color: var(--color-neutral-100);
       text-align: center;
       font-size: 2.4rem;
       font-weight: 700;
@@ -125,7 +125,7 @@
         display: block;
         width: 2.5rem;
         height: 0.1rem;
-        background: var(--quick-silver);
+        background: var(--color-neutral-300);
       }
     }
   }
@@ -136,7 +136,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--quick-silver);
+    color: var(--color-neutral-300);
     text-align: center;
     font-size: 1.4rem;
     font-weight: 700;
@@ -145,7 +145,7 @@
     padding: 1.2rem 3.4rem;
     white-space: nowrap;
     border-radius: 6.25rem;
-    background: var(--smoky-black);
+    background: var(--color-neutral-900);
     cursor: pointer;
     will-change: transform;
     overflow: hidden;
@@ -159,7 +159,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      border: 0.2rem solid var(--quick-silver);
+      border: 0.2rem solid var(--color-neutral-300);
       border-radius: 6.25rem;
       pointer-events: none;
       transition: border-color 0.3s ease;
@@ -184,7 +184,7 @@
         left: 0;
         width: 170%;
         aspect-ratio: 1/1;
-        background-color: var(--blue-sapphire);
+        background-color: var(--color-accent);
         border-radius: 50%;
         pointer-events: none;
         transform: translate(-50%, -50%);
@@ -199,10 +199,10 @@
     }
 
     &:hover {
-      color: var(--smoky-black);
+      color: var(--color-neutral-900);
 
       &::after {
-        border-color: var(--blue-sapphire);
+        border-color: var(--color-accent);
       }
 
       .navbar-letstalk-label {

@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: var(--smoky-black);
+  background: var(--color-neutral-900);
   align-items: center;
   z-index: 5;
   opacity: 1;
@@ -70,7 +70,7 @@
     font-family: var(--font-barlow);
     font-size: 2.4rem;
     font-weight: 700;
-    color: var(--quick-silver);
+    color: var(--color-neutral-300);
     text-align: center;
     letter-spacing: -0.408rem;
     line-height: normal;
