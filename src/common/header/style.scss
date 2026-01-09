@@ -1,0 +1,84 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+
+  .header-content {
+    gap: 2rem;
+    z-index: 2;
+    width: 90%;
+    margin-top: -50rem;
+
+    p {
+      color: var(--white);
+      font-size: 2rem;
+      font-weight: 600;
+      line-height: 2.5rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    canvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: auto;
+      cursor: none;
+    }
+
+    svg {
+      width: 80vw;
+      height: auto;
+      aspect-ratio: 16 / 9;
+      min-height: 400px;
+      display: block;
+      overflow: visible;
+      position: relative;
+      z-index: 5;
+    }
+
+    video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      object-fit: cover;
+      z-index: 4;
+    }
+  }
+
+  &-video-down {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 91.3rem;
+    min-height: 91.3rem;
+    object-fit: cover;
+    z-index: 2;
+    will-change: transform, opacity;
+
+    @media (max-width: 1024px) {
+      width: 68rem;
+      min-height: 68rem;
+    }
+
+    @media (max-width: 600px) {
+      width: 48rem;
+      min-height: 48rem;
+    }
+  }
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

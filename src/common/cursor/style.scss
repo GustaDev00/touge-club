@@ -1,0 +1,75 @@
+.custom-cursor {
+  position: fixed;
+  width: 2.8rem;
+  height: 2.8rem;
+  top: 1rem;
+  left: 1rem;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: normal;
+  will-change: transform;
+
+  @media (hover: none) and (pointer: coarse) {
+    display: none;
+  }
+
+  @media (max-width: 1024px) {
+    width: 3.2rem;
+    height: 3.2rem;
+  }
+
+  @media (max-width: 600px) {
+    width: 2.8rem;
+    height: 2.8rem;
+  }
+
+  img {
+    position: absolute;
+    width: 2.2rem;
+    height: 2.2rem;
+    object-fit: contain;
+    transition: opacity 0.2s ease;
+    top: 0;
+    left: 0;
+
+    @media (max-width: 1024px) {
+      width: 2.6rem;
+      height: 2.6rem;
+    }
+
+    @media (max-width: 600px) {
+      width: 2.2rem;
+      height: 2.2rem;
+    }
+  }
+
+  .cursor-default {
+    opacity: 1;
+  }
+
+  .cursor-pointer {
+    opacity: 0;
+    width: 2.8rem;
+    height: 2.8rem;
+
+    @media (max-width: 1024px) {
+      width: 3.2rem;
+      height: 3.2rem;
+    }
+
+    @media (max-width: 600px) {
+      width: 2.8rem;
+      height: 2.8rem;
+    }
+  }
+
+  &.is-pointer {
+    .cursor-default {
+      opacity: 0;
+    }
+
+    .cursor-pointer {
+      opacity: 1;
+    }
+  }
+}

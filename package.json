@@ -1,0 +1,41 @@
+{
+  "name": "boilerplate",
+  "version": "1.0.0",
+  "description": "boilerplate",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "mkdir -p dist/assets && echo '' > dist/assets/global-style.css && vite build --mode production",
+    "test": "mkdir -p dist/assets && echo '' > dist/assets/global-style.css && vite build --mode development",
+    "preview": "vite preview",
+    "test:vitest": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lighthouse": "pnpm test && lhci autorun",
+    "hostinger": "pnpm build && node -e \"const fs=require('fs');if(fs.existsSync('dist.zip')){fs.rmSync('dist.zip');}\" && cd dist && zip -r ../dist.zip ."
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "gsap": "^3.13.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@lhci/cli": "^0.15.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.6.2",
+    "@types/three": "^0.180.0",
+    "@vitest/ui": "^3.2.4",
+    "dotenv": "^17.2.3",
+    "jsdom": "^27.0.0",
+    "rollup-plugin-visualizer": "^6.0.5",
+    "sass": "^1.93.2",
+    "terser": "^5.44.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "vite-plugin-compression": "^0.5.1",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,213 @@
+.navbar {
+  position: fixed;
+  width: 90%;
+  height: 9.7rem;
+  margin: 0 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 5;
+
+  &-crystal {
+    position: absolute;
+    top: -51.1rem;
+    left: -80.6rem;
+    width: 95.3rem;
+    height: 95.3rem;
+    object-fit: cover;
+    z-index: 2;
+    opacity: 0;
+    will-change: transform, opacity;
+
+    @media (max-width: 1024px) {
+      width: 70rem;
+      height: 70rem;
+      top: -38rem;
+      left: -55rem;
+    }
+
+    @media (max-width: 600px) {
+      width: 50rem;
+      height: 50rem;
+      top: -27rem;
+      left: -39rem;
+    }
+  }
+
+  &-line {
+    width: 100%;
+    height: 0.1rem;
+    background: var(--quick-silver);
+    position: relative;
+
+    &:first-of-type {
+      width: 20%;
+    }
+
+    &:nth-of-type(2) {
+      width: 70%;
+    }
+  }
+
+  &-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 9.7rem;
+    width: 9.7rem;
+    height: 9.7rem;
+    border-radius: 50%;
+    position: relative;
+    z-index: 3;
+
+    .icon {
+      position: relative;
+      width: 4.2rem;
+      height: 4.3011rem;
+      transform: rotate(90deg);
+      z-index: 2;
+
+      &-bar {
+        position: relative;
+        bottom: 0.4rem;
+      }
+    }
+
+    .fireworks-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+  }
+
+  &-links {
+    display: flex;
+    gap: 0rem;
+    margin: 0 2rem;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      color: var(--white);
+      text-align: center;
+      font-size: 2.4rem;
+      font-weight: 700;
+      line-height: normal;
+      letter-spacing: -0.12rem;
+      position: relative;
+      overflow: hidden;
+      will-change: transform;
+
+      p {
+        position: relative;
+      }
+
+      span {
+        position: relative;
+      }
+
+      strong {
+        position: absolute;
+        left: 0;
+      }
+
+      &:not(:first-of-type) {
+        margin-left: 2rem;
+      }
+
+      &:not(:last-of-type)::after {
+        content: "";
+        display: block;
+        width: 2.5rem;
+        height: 0.1rem;
+        background: var(--quick-silver);
+      }
+    }
+  }
+
+  &-letstalk {
+    position: absolute;
+    right: 6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--quick-silver);
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 114.904%;
+    text-transform: uppercase;
+    padding: 1.2rem 3.4rem;
+    white-space: nowrap;
+    border-radius: 6.25rem;
+    background: var(--smoky-black);
+    cursor: pointer;
+    will-change: transform;
+    overflow: hidden;
+    text-decoration: none;
+    transition: color 0.15s ease-in-out;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: 0.2rem solid var(--quick-silver);
+      border-radius: 6.25rem;
+      pointer-events: none;
+      transition: border-color 0.3s ease;
+    }
+
+    &-flair {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      transform: scale(0);
+      transform-origin: 0 0;
+      will-change: transform;
+
+      &::before {
+        content: "";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 170%;
+        aspect-ratio: 1/1;
+        background-color: var(--blue-sapphire);
+        border-radius: 50%;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    &-label {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      transition: color 0.05s ease-in-out;
+    }
+
+    &:hover {
+      color: var(--smoky-black);
+
+      &::after {
+        border-color: var(--blue-sapphire);
+      }
+
+      .navbar-letstalk-label {
+        transition: color 0.15s ease-in-out;
+      }
+    }
+  }
+}

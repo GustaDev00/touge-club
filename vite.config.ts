@@ -1,0 +1,460 @@
+import { defineConfig, Plugin, loadEnv } from "vite";
+import { resolve } from "node:path";
+import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import fs from "node:fs";
+import viteCompression from "vite-plugin-compression";
+import type { MinifyOptions } from "terser";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const jsonVars = JSON.parse(
+  readFileSync(resolve(__dirname, "src/constants/index.json"), "utf-8")
+);
+
+function resolveJsonVar(path: string): string {
+  const parts = path.split(".");
+  let val = jsonVars;
+  for (const p of parts) {
+    if (val && typeof val === "object" && p in val) {
+      val = val[p];
+    } else {
+      return "";
+    }
+  }
+  return typeof val === "object" ? JSON.stringify(val) : String(val);
+}
+
+function processJsonVars(html: string): string {
+  return html.replace(
+    /\{\{([A-Z]+(?:\.[a-zA-Z0-9_]+)+)\}\}/g,
+    (_: string, path: string) => resolveJsonVar(path)
+  );
+}
+
+function processPageWithLayout(pageHtml: string, pageName: string): string {
+  let processedHtml = pageHtml;
+  try {
+    // expand simple repeat directives in the page before layout processing
+    processedHtml = processRepeats(processedHtml);
+    const layoutPath = resolve(__dirname, "src/app/layout.html");
+    let layoutHtml = readFileSync(layoutPath, "utf-8");
+    const headMatch = pageHtml.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+    const pageHead = headMatch ? headMatch[1].trim() : "";
+    const contentWithoutHead = pageHtml
+      .replace(/<head[^>]*>[\s\S]*?<\/head>/i, "")
+      .trim();
+    let correctedPageHead = pageHead;
+    if (pageHead) {
+      correctedPageHead = pageHead.replace(
+        /src="\.\/([^"]+)"/g,
+        `src="/src/app/${pageName}/$1"`
+      );
+      correctedPageHead = correctedPageHead.replace(
+        /href="\.\/([^"]+)"/g,
+        `href="/src/app/${pageName}/$1"`
+      );
+    }
+    if (correctedPageHead) {
+      layoutHtml = layoutHtml.replace(
+        /<\/head>/i,
+        `    ${correctedPageHead}\n</head>`
+      );
+    }
+    layoutHtml = layoutHtml.replace(
+      /<main[^>]*>[\s\S]*?<\/main>/i,
+      `<main>\n        ${contentWithoutHead}\n    </main>`
+    );
+    processedHtml = layoutHtml;
+  } catch (error) {}
+  processedHtml = processComponents(processedHtml);
+  // expand repeats in components-injected html as well
+  processedHtml = processRepeats(processedHtml);
+  processedHtml = processJsonVars(processedHtml);
+  return processedHtml;
+}
+
+function processComponents(html: string): string {
+  // expand repeats before component injection so repeated templates get processed too
+  let processedHtml = processRepeats(html);
+  const templateRegex = /\{\{(common\/[^}]+)\}\}/g;
+  let matches = processedHtml.match(templateRegex);
+
+  while (matches && matches.length) {
+    matches.forEach((match) => {
+      const componentPath = match.replace(/[{}]/g, "");
+      const componentHtmlPath = resolve(
+        __dirname,
+        `src/${componentPath}/index.html`
+      );
+
+      try {
+        let componentHtml = readFileSync(componentHtmlPath, "utf-8");
+
+        componentHtml = processJsonVars(componentHtml);
+        processedHtml = processedHtml.replace(match, componentHtml.trim());
+        const componentDir = resolve(__dirname, `src/${componentPath}`);
+        if (existsSync(resolve(componentDir, "style.scss"))) {
+          const cssPath = `/src/${componentPath}/style.scss`;
+          const cssLink = `<link rel="stylesheet" href="${cssPath}">`;
+          if (!processedHtml.includes(cssLink)) {
+            processedHtml = processedHtml.replace(
+              "</head>",
+              `    ${cssLink}\n</head>`
+            );
+          }
+        }
+        if (existsSync(resolve(componentDir, "script.ts"))) {
+          const jsPath = `/src/${componentPath}/script.ts`;
+          const jsScript = `<script type="module" src="${jsPath}"></script>`;
+          if (!processedHtml.includes(jsScript)) {
+            processedHtml = processedHtml.replace(
+              "</head>",
+              `    ${jsScript}\n</head>`
+            );
+          }
+        }
+      } catch (error) {}
+    });
+    matches = processedHtml.match(templateRegex);
+  }
+
+  return processedHtml;
+}
+
+// Process a simple repeat directive: {{repeat 6}}...{{/repeat}}
+function processRepeats(html: string): string {
+  return html.replace(
+    /\{\{repeat\s+(\d+)\}\}([\s\S]*?)\{\{\/repeat\}\}/g,
+    (_m, count, content) => {
+      const n = Math.max(0, Number(count) || 0);
+      return Array.from({ length: n })
+        .map(() => content)
+        .join("");
+    }
+  );
+}
+function getPageMap(): Record<string, string> {
+  const pages: Record<string, string> = {};
+  const root = resolve(__dirname, "src/app");
+  if (!existsSync(root)) return pages;
+  const dirs = readdirSync(root);
+  dirs.forEach((d) => {
+    const pageFile = resolve(root, d, "page.html");
+    if (existsSync(pageFile)) {
+      const key = d === "home" ? "index" : d;
+      pages[key] = pageFile;
+    }
+  });
+  return pages;
+}
+function templateProcessor(): Plugin {
+  return {
+    name: "template-processor",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (!req.url) return next();
+        const url = new URL(req.url, "http://dev");
+        const path = url.pathname;
+        if (path === "/" || path === "/index.html") {
+          req.url = "/src/app/home/page.html";
+          return next();
+        }
+        const m = path.match(/^\/(.+)\.html$/);
+        if (m) {
+          const name = m[1];
+          const target = `/src/app/${name}/page.html`;
+          req.url = target;
+          return next();
+        }
+        return next();
+      });
+
+      // Watch for filesystem changes and trigger a full reload in the browser
+      try {
+        const reloadExts = /\.(html|scss|ts)$/i;
+        const watcher = (server as any).watcher || (server as any).chokidar;
+        if (watcher && typeof watcher.on === "function") {
+          const trigger = (file: string) => {
+            if (!file) return;
+            if (reloadExts.test(file)) {
+              try {
+                server.ws.send({ type: "full-reload", path: "*" });
+              } catch (e) {}
+            }
+          };
+          watcher.on("change", trigger);
+          watcher.on("add", trigger);
+          watcher.on("unlink", trigger);
+        }
+      } catch (e) {
+        // noop - don't break dev server if watcher hooks can't be attached
+      }
+    },
+    transformIndexHtml(html, ctx) {
+      const file = ctx?.filename || "";
+      const m = file.match(/\/src\/app\/([^/]+)\/page\.html$/);
+      if (!m) return html;
+      const pageName = m[1] === "home" ? "home" : m[1];
+      return processPageWithLayout(html, pageName);
+    },
+  };
+}
+function generateTmpBuildPages(tmpDir = "pages"): Record<string, string> {
+  const inputs: Record<string, string> = {};
+  const map = getPageMap();
+  if (!Object.keys(map).length) return inputs;
+  const tmpAbs = resolve(__dirname, tmpDir);
+  if (!fs.existsSync(tmpAbs)) fs.mkdirSync(tmpAbs, { recursive: true });
+  for (const [key, srcPath] of Object.entries(map)) {
+    let html = readFileSync(srcPath, "utf-8");
+    const pageName = key === "index" ? "home" : key;
+    const componentRegex = /\{\{(common\/[^}]+)\}\}/g;
+    const componentMatches = Array.from(html.matchAll(componentRegex));
+    let scriptsConcat = "";
+    let importsConcat = "";
+    let topLevelConcat = "";
+    componentMatches.forEach((m) => {
+      const compPath = m[1];
+      const scriptPath = resolve(__dirname, `src/${compPath}/script.ts`);
+      if (existsSync(scriptPath)) {
+        let scriptContent = readFileSync(scriptPath, "utf-8");
+        
+        // Extract imports
+        const importMatches = scriptContent.match(/^import\s+.+?;$/gm);
+        if (importMatches) {
+          importMatches.forEach((imp) => {
+            if (!importsConcat.includes(imp)) {
+              importsConcat += `${imp}\n`;
+            }
+          });
+          // Remove imports from script content
+          scriptContent = scriptContent.replace(/^import\s+.+?;$/gm, '');
+        }
+        
+        // Extract top-level statements (like gsap.registerPlugin)
+        const topLevelMatches = scriptContent.match(/^[a-zA-Z_$][\w$]*\.[a-zA-Z_$][\w$]*\(.+?\);$/gm);
+        if (topLevelMatches) {
+          topLevelMatches.forEach((stmt) => {
+            if (!topLevelConcat.includes(stmt)) {
+              topLevelConcat += `${stmt}\n`;
+            }
+          });
+          // Remove these statements from script content
+          scriptContent = scriptContent.replace(/^[a-zA-Z_$][\w$]*\.[a-zA-Z_$][\w$]*\(.+?\);$/gm, '');
+        }
+        
+        // Remove DOMContentLoaded wrapper
+        scriptContent = scriptContent.replace(
+          /document\.addEventListener\(["']DOMContentLoaded["'],\s*\(\)\s*=>\s*\{([\s\S]*?)\}\s*\);?/gm,
+          "$1"
+        );
+        
+        // Remove export statements but keep the code
+        scriptContent = scriptContent.replace(/^export\s+(default\s+)?/gm, '');
+        
+        scriptsConcat += `\n${scriptContent.trim()}\n`;
+      }
+    });
+    const mainPath = resolve(__dirname, `src/app/${pageName}/main.ts`);
+    if (existsSync(mainPath)) {
+      let finalScript = importsConcat.trim();
+      if (topLevelConcat.trim()) {
+        finalScript += `\n\n${topLevelConcat.trim()}`;
+      }
+      finalScript += `\n\ndocument.addEventListener("DOMContentLoaded", () => {\n${scriptsConcat.trim()}\n});\n`;
+      writeFileSync(mainPath, finalScript, "utf-8");
+    }
+    const processed = processPageWithLayout(html, pageName);
+    const outFile = resolve(tmpAbs, `${key}.html`);
+    writeFileSync(outFile, processed, "utf-8");
+    inputs[key] = outFile;
+  }
+  return inputs;
+}
+
+export default defineConfig(({ command, mode }) => {
+  // Load env file based on mode
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  const pageInputs = command === "build" ? generateTmpBuildPages() : undefined;
+
+  const input = {
+    "global-style": resolve(__dirname, "src/styles/global.scss"),
+    ...(pageInputs || {}),
+  };
+
+  const publicUrl = env.PUBLIC_URL || "";
+  const baseUrl = command === "build" && publicUrl ? publicUrl : "./";
+
+  return {
+    plugins: [
+      templateProcessor(),
+      // Gzip compression
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 10240, // Only compress files > 10KB
+        algorithm: 'gzip',
+        ext: '.gz',
+      }),
+      // Brotli compression (better than gzip)
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 10240,
+        algorithm: 'brotliCompress',
+        ext: '.br',
+      }),
+      (function cleanupTmpPages(): Plugin {
+        return {
+          name: "cleanup-tmp-pages",
+          apply: "build",
+          writeBundle: {
+            sequential: true,
+            handler() {
+              const distDir = resolve(__dirname, "dist");
+              const fromDir = resolve(distDir, "pages");
+              if (!fs.existsSync(fromDir)) return;
+              const files = fs
+                .readdirSync(fromDir)
+                .filter((f) => f.endsWith(".html"));
+              for (const f of files) {
+                const src = resolve(fromDir, f);
+                const dst = resolve(distDir, f);
+                let html = fs.readFileSync(src, "utf-8");
+
+                const prodBase = publicUrl.endsWith("/")
+                  ? publicUrl.slice(0, -1)
+                  : publicUrl;
+                html = html
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\.\/assets\//g,
+                    `$1=$2${prodBase}/assets/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\/assets\//g,
+                    `$1=$2${prodBase}/assets/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])assets\//g,
+                    `$1=$2${prodBase}/assets/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\.\/imgs\//g,
+                    `$1=$2${prodBase}/imgs/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\/imgs\//g,
+                    `$1=$2${prodBase}/imgs/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])imgs\//g,
+                    `$1=$2${prodBase}/imgs/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\.\/fonts\//g,
+                    `$1=$2${prodBase}/fonts/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\/fonts\//g,
+                    `$1=$2${prodBase}/fonts/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])fonts\//g,
+                    `$1=$2${prodBase}/fonts/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\.\/videos\//g,
+                    `$1=$2${prodBase}/videos/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\/videos\//g,
+                    `$1=$2${prodBase}/videos/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])videos\//g,
+                    `$1=$2${prodBase}/videos/`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\.\/([^\/]+\.(ico|png|jpg|svg|webp))/g,
+                    `$1=$2${prodBase}/$3`
+                  )
+                  .replace(
+                    /(href|src)\s*=\s*(["'])\.\/([^\/]+\.(ico|png|jpg|svg|webp))/g,
+                    `$1=$2${prodBase}/$3`
+                  );
+
+                if (!html.includes("global-style.css")) {
+                  html = html.replace(
+                    "</head>",
+                    `  <link rel="stylesheet" crossorigin href="${prodBase}/assets/global-style.css">\n</head>`
+                  );
+                }
+
+                fs.writeFileSync(dst, html, "utf-8");
+              }
+              fs.rmSync(fromDir, { recursive: true, force: true });
+              const rootTmp = resolve(__dirname, "pages");
+              if (fs.existsSync(rootTmp)) {
+                fs.rmSync(rootTmp, { recursive: true, force: true });
+              }
+            },
+          },
+        };
+      })(),
+    ],
+    root: ".",
+    base: baseUrl,
+    publicDir: "public",
+    build: {
+      outDir: "dist",
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: mode === 'production',
+          drop_debugger: true,
+          pure_funcs: mode === 'production' ? ['console.log', 'console.info'] : [],
+        },
+      } as MinifyOptions,
+      rollupOptions: {
+        input,
+        output: {
+          entryFileNames: "assets/[name]-[hash].js",
+          chunkFileNames: "assets/[name]-[hash].js",
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name === "global-style.css") {
+              return "assets/global-style.css";
+            }
+            return "assets/[name]-[hash].[ext]";
+          },
+          manualChunks: (id) => {
+            // Separate vendor chunks for better caching
+            if (id.includes('node_modules')) {
+              if (id.includes('gsap')) return 'vendor-gsap';
+              if (id.includes('three')) return 'vendor-three';
+              return 'vendor';
+            }
+          },
+        },
+      },
+      cssMinify: true,
+      cssCodeSplit: true,
+      reportCompressedSize: true,
+      chunkSizeWarningLimit: 1000,
+    },
+    server: {
+      port: 3000,
+      open: "/",
+    },
+    css: {
+      preprocessorOptions: {
+        scss: {},
+      },
+    },
+    resolve: {
+      alias: {
+        "@": resolve(__dirname, "src"),
+      },
+    },
+  };
+});
